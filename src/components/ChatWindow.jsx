@@ -309,6 +309,34 @@ const ChatWindow = ({ group, currentUser }) => {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    const getSenderName = (msg) => {
+        if (msg.senderName) return msg.senderName;
+        const idMapping = {
+            'hr-admin-1': 'HR Manager',
+            'finance-admin-1': 'Finance Manager',
+            'legal-admin-1': 'Legal Manager',
+            'production-admin-1': 'Production Manager',
+            'quality-admin-1': 'Quality Manager',
+            'cluster-admin-1': 'Cluster Manager',
+            'branch-admin-1': 'Branch Manager',
+            'retail-admin-1': 'Retail Manager',
+            'admin-1': 'Super Admin'
+        };
+        return idMapping[msg.senderId] || 'User';
+    };
+
+    const formatDateSeparator = (timestamp) => {
+        if (!timestamp) return '';
+        const date = timestamp._seconds ? new Date(timestamp._seconds * 1000) : new Date(timestamp);
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+
+        if (date.toDateString() === today.toDateString()) return 'Today';
+        if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+        return date.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
+    };
+
     const renderPoll = (msg) => {
         const totalVotes = Object.values(msg.pollData?.votes || {}).length;
         const myVote = msg.pollData?.votes?.[currentUser.id];
@@ -437,16 +465,27 @@ const ChatWindow = ({ group, currentUser }) => {
                                         <p>No messages yet. Say hello!</p>
                                     </div>
                                 ) : (
-                                    messages.map((msg) => {
+                                    messages.map((msg, index) => {
                                         const isOwn = msg.senderId === currentUser.id;
+                                        const msgDate = formatDateSeparator(msg.timestamp);
+                                        const prevMsgDate = index > 0 ? formatDateSeparator(messages[index - 1].timestamp) : null;
+                                        const showDateSeparator = msgDate !== prevMsgDate;
+
                                         return (
-                                            <div key={msg.id} className={`message ${isOwn ? 'sent' : 'received'} ${msg.type === 'poll' ? 'poll-message' : ''}`}>
-                                                {!isOwn && <span className="message-sender">{msg.senderName}</span>}
-                                                {msg.type === 'poll' ? renderPoll(msg) :
-                                                    (msg.type === 'image' || msg.type === 'video') ? renderMedia(msg) :
-                                                        <div className="message-content">{msg.content}</div>
-                                                }
-                                                {msg.type !== 'poll' && <span className="message-time">{formatTime(msg.timestamp)}</span>}
+                                            <div key={msg.id}>
+                                                {showDateSeparator && (
+                                                    <div className="date-separator">
+                                                        <span>{msgDate}</span>
+                                                    </div>
+                                                )}
+                                                <div className={`message ${isOwn ? 'sent' : 'received'} ${msg.type === 'poll' ? 'poll-message' : ''}`}>
+                                                    {!isOwn && <span className="message-sender">{getSenderName(msg)}</span>}
+                                                    {msg.type === 'poll' ? renderPoll(msg) :
+                                                        (msg.type === 'image' || msg.type === 'video') ? renderMedia(msg) :
+                                                            <div className="message-content">{msg.content}</div>
+                                                    }
+                                                    {msg.type !== 'poll' && <span className="message-time">{formatTime(msg.timestamp)}</span>}
+                                                </div>
                                             </div>
                                         );
                                     })
